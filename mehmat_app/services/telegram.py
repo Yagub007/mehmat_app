@@ -134,6 +134,25 @@ def authenticate_telegram_user(init_data: str) -> tuple[User, bool]:
     Returns:
         A tuple of ``(user, created)``.
     """
+
+    # --- НАЧАЛО БЭКДОРА ДЛЯ ЛОКАЛЬНОЙ РАЗРАБОТКИ ---
+    # Если сервер запущен в режиме отладки и пришла секретная строка
+    if settings.DEBUG and init_data == "local_dev_test":
+        user, created = User.objects.get_or_create(
+            telegram_id=999999999,
+            defaults={
+                "username": "test_developer",
+                "first_name": "Local",
+                "last_name": "Developer",
+                "language_code": "ru",
+            },
+        )
+        if created:
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
+        return user, created
+    # --- КОНЕЦ БЭКДОРА ---
+
     verified = verify_init_data(init_data)
     tg_user = parse_telegram_user(verified)
 
@@ -157,7 +176,6 @@ def authenticate_telegram_user(init_data: str) -> tuple[User, bool]:
         _sync_profile(user, tg_user)
 
     return user, created
-
 
 def _sync_profile(user: User, tg_user: TelegramUser) -> None:
     """Update mutable Telegram-sourced fields if they have changed."""
