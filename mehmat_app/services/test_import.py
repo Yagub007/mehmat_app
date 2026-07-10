@@ -33,9 +33,27 @@ Expected JSON shape (a single object, or a list of them)::
             {"text": "1", "order": 0},
             {"text": "2", "order": 1}
           ]
+        },
+        {
+          "text": "34 + 34 = ?",
+          "type": "short_answer",       # free-text/numeric answer
+          "correct_answer": "68"        # compared after normalising spaces/°
+        },
+        {
+          "text": "Match the pairs",
+          "type": "matching",
+          "matching": {
+            "left":  [{"id": "1", "text": "∠5"}, {"id": "2", "text": "∠3"}],
+            "right": [{"id": "А", "text": "74°"}, {"id": "Б", "text": "127°"}],
+            "answer": {"1": "Б", "2": "А"}  # left id → right id
+          }
         }
       ]
     }
+
+The importer also accepts the exam-style shape (``question`` instead of
+``text``, ``single_choice`` type, and ``answers`` + a ``correct_answer`` letter),
+so exported question banks can be loaded with minimal transformation.
 """
 from __future__ import annotations
 
@@ -178,16 +196,19 @@ class TestImportService:
                     explanation=question["explanation"],
                     points=question["points"],
                     order=q_index,
+                    correct_answer=question.get("correct_answer", ""),
+                    matching=question.get("matching", {}),
                 )
-                Choice.objects.bulk_create([
-                    Choice(
-                        question=q_obj,
-                        text=choice["text"],
-                        is_correct=choice["is_correct"],
-                        order=choice["order"],
-                    )
-                    for choice in question["choices"]
-                ])
+                if question["choices"]:
+                    Choice.objects.bulk_create([
+                        Choice(
+                            question=q_obj,
+                            text=choice["text"],
+                            is_correct=choice["is_correct"],
+                            order=choice["order"],
+                        )
+                        for choice in question["choices"]
+                    ])
                 self.stats.questions += 1
 
         if created:
@@ -200,16 +221,47 @@ class TestImportService:
     def _parse_question(raw: dict, index: int) -> dict:
         if not isinstance(raw, dict):
             raise TestValidationError(f"question {index}: expected an object")
-        text = str(raw.get("text", "")).strip()
+        # Accept both the canonical `text` and the exam-style `question` key.
+        text = str(raw.get("text") or raw.get("question") or "").strip()
         if not text:
             raise TestValidationError(f"question {index}: missing 'text'")
 
         qtype = str(raw.get("type", QuestionType.SINGLE)).lower()
+        # Alias the exam-format type names onto canonical ones.
+        qtype = {"single_choice": "single", "multiple_choice": "multiple"}.get(qtype, qtype)
         if qtype not in _VALID_QTYPE:
             raise TestValidationError(
                 f"question {index}: invalid type '{qtype}' (use {sorted(_VALID_QTYPE)})"
             )
 
+        parsed = {
+            "text": text,
+            "type": qtype,
+            "explanation": str(raw.get("explanation", "")),
+            "points": max(1, int(raw.get("points", 1))),
+            "choices": [],
+            "correct_answer": "",
+            "matching": {},
+        }
+
+        if qtype == QuestionType.SHORT_ANSWER:
+            answer = str(raw.get("correct_answer", "")).strip()
+            if not answer:
+                raise TestValidationError(
+                    f"question {index}: short-answer needs a 'correct_answer'"
+                )
+            parsed["correct_answer"] = answer
+            return parsed
+
+        if qtype == QuestionType.MATCHING:
+            parsed["matching"] = TestImportService._parse_matching(raw, index)
+            return parsed
+
+        parsed["choices"] = TestImportService._parse_choices(raw, index, qtype)
+        return parsed
+
+    @staticmethod
+    def _parse_choices(raw: dict, index: int, qtype: str) -> list[dict]:
         raw_choices = raw.get("choices") or []
         if len(raw_choices) < 2:
             raise TestValidationError(f"question {index}: needs at least 2 choices")
@@ -229,18 +281,39 @@ class TestImportService:
         if qtype in (QuestionType.SINGLE, QuestionType.MULTIPLE):
             correct = [c for c in choices if c["is_correct"]]
             if not correct:
-                raise TestValidationError(
-                    f"question {index}: no correct choice marked"
-                )
+                raise TestValidationError(f"question {index}: no correct choice marked")
             if qtype == QuestionType.SINGLE and len(correct) > 1:
                 raise TestValidationError(
                     f"question {index}: single-choice has multiple correct answers"
                 )
+        return choices
 
+    @staticmethod
+    def _parse_matching(raw: dict, index: int) -> dict:
+        matching = raw.get("matching") or {}
+        left = matching.get("left") or []
+        right = matching.get("right") or []
+        answer = matching.get("answer") or {}
+        if len(left) < 2 or len(right) < 2:
+            raise TestValidationError(
+                f"question {index}: matching needs at least 2 left and right items"
+            )
+        if not answer:
+            raise TestValidationError(f"question {index}: matching needs an 'answer' map")
+
+        left_ids = {str(item["id"]) for item in left}
+        right_ids = {str(item["id"]) for item in right}
+        answer_map = {str(k): str(v) for k, v in answer.items()}
+        if set(answer_map) != left_ids:
+            raise TestValidationError(
+                f"question {index}: matching answer must map every left item"
+            )
+        if not set(answer_map.values()) <= right_ids:
+            raise TestValidationError(
+                f"question {index}: matching answer references unknown right item"
+            )
         return {
-            "text": text,
-            "type": qtype,
-            "explanation": str(raw.get("explanation", "")),
-            "points": max(1, int(raw.get("points", 1))),
-            "choices": choices,
+            "left": [{"id": str(i["id"]), "text": str(i["text"]).strip()} for i in left],
+            "right": [{"id": str(i["id"]), "text": str(i["text"]).strip()} for i in right],
+            "answer": answer_map,
         }

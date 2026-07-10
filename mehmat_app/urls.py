@@ -11,6 +11,11 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from mehmat_app.views.achievements import AchievementListView
+from mehmat_app.views.admin import (
+    AdminDashboardView,
+    AdminUserViewSet,
+    AuditLogListView,
+)
 from mehmat_app.views.auth import TelegramAuthView
 from mehmat_app.views.leaderboard import LeaderboardView, MyRankView
 from mehmat_app.views.materials import CategoryViewSet, MaterialViewSet
@@ -29,6 +34,15 @@ router.register("materials", MaterialViewSet, basename="material")
 router.register("tests", TestViewSet, basename="test")
 router.register("submissions", SubmissionViewSet, basename="submission")
 router.register("notifications", NotificationViewSet, basename="notification")
+
+admin_router = DefaultRouter()
+admin_router.register("users", AdminUserViewSet, basename="admin-user")
+
+admin_patterns = [
+    path("dashboard/", AdminDashboardView.as_view(), name="admin-dashboard"),
+    path("audit-log/", AuditLogListView.as_view(), name="admin-audit-log"),
+    path("", include(admin_router.urls)),
+]
 
 auth_patterns = [
     path("telegram/", TelegramAuthView.as_view(), name="telegram-auth"),
@@ -57,6 +71,7 @@ urlpatterns = [
     path("profile/", include(profile_patterns)),
     path("leaderboard/", include(leaderboard_patterns)),
     path("achievements/", AchievementListView.as_view(), name="achievements"),
+    path("admin/", include(admin_patterns)),
     path("schema/", include(schema_patterns)),
     path("", include(router.urls)),
 ]

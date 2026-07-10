@@ -89,7 +89,7 @@ class Question(models.Model):
     )
     text = models.TextField()
     question_type = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=QuestionType.choices,
         default=QuestionType.SINGLE,
     )
@@ -105,6 +105,12 @@ class Question(models.Model):
         help_text="Relative weight of the question when scoring.",
     )
     order = models.PositiveIntegerField(default=0)
+
+    # Expected value for short-answer questions (compared after normalisation).
+    correct_answer = models.CharField(max_length=255, blank=True)
+    # Matching questions: {"left": [{"id", "text"}], "right": [{"id", "text"}],
+    # "answer": {"<left id>": "<right id>"}}. Empty for other types.
+    matching = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ("order", "id")
@@ -258,6 +264,10 @@ class SubmissionAnswer(models.Model):
     )
     # For ordering questions: the ordered list of choice ids the user submitted.
     ordering_answer = models.JSONField(default=list, blank=True)
+    # For short-answer questions: the raw text the user submitted.
+    text_answer = models.CharField(max_length=255, blank=True)
+    # For matching questions: the submitted {"<left id>": "<right id>"} map.
+    matching_answer = models.JSONField(default=dict, blank=True)
     is_correct = models.BooleanField(default=False)
 
     class Meta:

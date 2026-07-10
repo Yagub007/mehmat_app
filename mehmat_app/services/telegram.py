@@ -145,11 +145,17 @@ def authenticate_telegram_user(init_data: str) -> tuple[User, bool]:
                 "first_name": "Local",
                 "last_name": "Developer",
                 "language_code": "ru",
+                # The local dev user is an admin so the admin panel can be
+                # exercised without a real Telegram admin account.
+                "is_admin": True,
             },
         )
         if created:
             user.set_unusable_password()
             user.save(update_fields=["password"])
+        elif not user.is_admin:
+            user.is_admin = True
+            user.save(update_fields=["is_admin"])
         return user, created
     # --- КОНЕЦ БЭКДОРА ---
 
@@ -164,6 +170,7 @@ def authenticate_telegram_user(init_data: str) -> tuple[User, bool]:
             "last_name": tg_user.last_name,
             "photo_url": tg_user.photo_url,
             "language_code": tg_user.language_code,
+            "is_admin": _should_be_admin(tg_user.username),
         },
     )
 
@@ -177,6 +184,11 @@ def authenticate_telegram_user(init_data: str) -> tuple[User, bool]:
 
     return user, created
 
+
+def _should_be_admin(username: str) -> bool:
+    """Return whether ``username`` is in the configured admin allowlist."""
+    return bool(username) and username.lower() in settings.ADMIN_USERNAMES
+
 def _sync_profile(user: User, tg_user: TelegramUser) -> None:
     """Update mutable Telegram-sourced fields if they have changed."""
     fields_to_update: list[str] = []
@@ -185,5 +197,10 @@ def _sync_profile(user: User, tg_user: TelegramUser) -> None:
         if getattr(user, attr) != new_value:
             setattr(user, attr, new_value)
             fields_to_update.append(attr)
+    # Promote allowlisted accounts to admin on login (never auto-demote, so a
+    # manually granted admin is not lost by removing them from the allowlist).
+    if not user.is_admin and _should_be_admin(tg_user.username):
+        user.is_admin = True
+        fields_to_update.append("is_admin")
     if fields_to_update:
         user.save(update_fields=fields_to_update)

@@ -22,6 +22,7 @@ class QuestionPublicSerializer(serializers.ModelSerializer):
     question_type_display = serializers.CharField(
         source="get_question_type_display", read_only=True
     )
+    matching = serializers.SerializerMethodField()
 
     class Meta:
         model = Question
@@ -34,8 +35,16 @@ class QuestionPublicSerializer(serializers.ModelSerializer):
             "points",
             "order",
             "choices",
+            "matching",
         )
         read_only_fields = fields
+
+    def get_matching(self, obj: Question) -> dict | None:
+        """Return the matching prompt (left/right items) without the answer key."""
+        data = obj.matching or {}
+        if not data:
+            return None
+        return {"left": data.get("left", []), "right": data.get("right", [])}
 
 
 class TestListSerializer(serializers.ModelSerializer):

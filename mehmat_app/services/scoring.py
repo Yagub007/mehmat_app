@@ -8,7 +8,7 @@ practice only and never affect ranking.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable
 
@@ -42,12 +42,43 @@ class AnswerInput:
     question_id: int
     choice_ids: list[int]
     ordering: list[int]
+    text_answer: str = ""
+    matching: dict[str, str] = field(default_factory=dict)
+
+
+def _normalize_answer(value: str) -> str:
+    """Canonicalise a short answer for tolerant comparison.
+
+    Collapses whitespace, drops degree signs and lower-cases, so ``"55 °"``,
+    ``"55°"`` and ``"55"`` all compare equal.
+    """
+    cleaned = "".join(str(value).split())
+    for ch in ("°", "º", "°", "⁰"):
+        cleaned = cleaned.replace(ch, "")
+    return cleaned.replace(",", ".").lower()
 
 
 def _grade_question(question: Question, answer: AnswerInput | None) -> bool:
     """Return whether ``answer`` correctly resolves ``question``."""
     if answer is None:
         return False
+
+    if question.question_type == QuestionType.SHORT_ANSWER:
+        if not answer.text_answer:
+            return False
+        return _normalize_answer(answer.text_answer) == _normalize_answer(
+            question.correct_answer
+        )
+
+    if question.question_type == QuestionType.MATCHING:
+        expected = question.matching.get("answer") or {}
+        submitted = answer.matching or {}
+        if not expected:
+            return False
+        # Compare as string→string maps (JSON keys are strings).
+        expected_map = {str(k): str(v) for k, v in expected.items()}
+        submitted_map = {str(k): str(v) for k, v in submitted.items()}
+        return submitted_map == expected_map
 
     choices = list(question.choices.all())
     valid_ids = {c.id for c in choices}
@@ -233,6 +264,8 @@ def _persist_answers(
             question=question,
             is_correct=is_correct,
             ordering_answer=answer.ordering if answer.ordering else [],
+            text_answer=answer.text_answer or "",
+            matching_answer=answer.matching or {},
         )
         if answer.choice_ids:
             submission_answer.selected_choices.set(answer.choice_ids)

@@ -24,6 +24,8 @@ env = environ.Env(
     JWT_REFRESH_TOKEN_LIFETIME_DAYS=(int, 7),
     TELEGRAM_AUTH_MAX_AGE_SECONDS=(int, 86400),
     TELEGRAM_BOT_TOKEN=(str, ""),
+    # Telegram usernames (without @) auto-granted app-admin on login.
+    ADMIN_USERNAMES=(list, ["yyagub", "stevieof", "oleksa212"]),
     JWT_SECRET=(str, ""),
     MEDIA_ROOT=(str, "media"),
     MEDIA_URL=(str, "/media/"),
@@ -230,6 +232,10 @@ CORS_ALLOW_CREDENTIALS = True
 # ---------------------------------------------------------------------------
 TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN")
 TELEGRAM_AUTH_MAX_AGE_SECONDS = env("TELEGRAM_AUTH_MAX_AGE_SECONDS")
+
+# Telegram usernames (case-insensitive, without a leading @) that are granted
+# application-admin rights automatically the next time they authenticate.
+ADMIN_USERNAMES = [name.lower().lstrip("@") for name in env("ADMIN_USERNAMES")]
 
 # ---------------------------------------------------------------------------
 # Security (hardened automatically when DEBUG is off)

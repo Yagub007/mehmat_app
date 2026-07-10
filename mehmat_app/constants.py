@@ -53,6 +53,8 @@ class QuestionType(models.TextChoices):
     SINGLE = "single", "Single choice"
     MULTIPLE = "multiple", "Multiple choice"
     ORDERING = "ordering", "Ordering"
+    SHORT_ANSWER = "short_answer", "Short answer"
+    MATCHING = "matching", "Matching"
 
 
 class RankTier(models.TextChoices):

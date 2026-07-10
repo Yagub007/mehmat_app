@@ -27,11 +27,22 @@ class AnswerInputSerializer(serializers.Serializer):
         default=list,
         allow_empty=True,
     )
+    text_answer = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=255, trim_whitespace=False
+    )
+    matching = serializers.DictField(
+        child=serializers.CharField(), required=False, default=dict
+    )
 
     def validate(self, attrs: dict) -> dict:
-        if not attrs.get("choice_ids") and not attrs.get("ordering"):
+        if not (
+            attrs.get("choice_ids")
+            or attrs.get("ordering")
+            or attrs.get("text_answer", "").strip()
+            or attrs.get("matching")
+        ):
             raise serializers.ValidationError(
-                "Each answer must include either choice_ids or ordering."
+                "Each answer must include choice_ids, ordering, text_answer or matching."
             )
         if len(set(attrs["choice_ids"])) != len(attrs["choice_ids"]):
             raise serializers.ValidationError("choice_ids must be unique.")
@@ -61,6 +72,8 @@ class SubmissionCreateSerializer(serializers.Serializer):
                 question_id=answer["question_id"],
                 choice_ids=list(answer["choice_ids"]),
                 ordering=list(answer["ordering"]),
+                text_answer=answer.get("text_answer", ""),
+                matching=dict(answer.get("matching") or {}),
             )
             for answer in self.validated_data["answers"]
         ]
@@ -78,6 +91,8 @@ class SubmissionAnswerReadSerializer(serializers.ModelSerializer):
             "question",
             "selected_choice_ids",
             "ordering_answer",
+            "text_answer",
+            "matching_answer",
             "is_correct",
         )
         read_only_fields = fields
