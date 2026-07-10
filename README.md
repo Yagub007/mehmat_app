@@ -79,6 +79,7 @@ All configuration comes from the environment (`.env` in development). See
 | GET/PATCH | `profile/` | Current user's profile |
 | GET | `profile/statistics/` | Aggregate statistics |
 | GET | `profile/achievements/` | Achievements with unlock status |
+| GET | `categories/` | Category tree (imported from Drive folders) |
 | GET | `materials/` · `materials/{id}/` | List/retrieve materials (search, filter) |
 | GET | `tests/` · `tests/{id}/` | List/retrieve tests (answers hidden) |
 | POST | `tests/{id}/start/` | Start a server-timed session |
@@ -93,6 +94,53 @@ All configuration comes from the environment (`.env` in development). See
 | GET | `schema/`, `schema/swagger/`, `schema/redoc/` | OpenAPI docs |
 
 Authenticate requests with `Authorization: Bearer <access_token>`.
+
+## Importing study materials (one-time, from a public Drive folder)
+
+Study materials are imported from a **public** Google Drive folder — no API key,
+credentials or service account required. The folder is downloaded with `gdown`,
+its folder tree is recreated as a `Category` hierarchy, and every file is copied
+into `MEDIA_ROOT` with only its relative path stored in the database. Materials
+are then served locally, so any file type (PDF, video, presentation, doc, …)
+opens directly from the app.
+
+```bash
+# Download a public folder and import everything
+python manage.py import_materials --url "https://drive.google.com/drive/folders/<id>"
+
+# Import an already-downloaded folder (skips the download step)
+python manage.py import_materials --source /path/to/folder --root-name "Матеріали НМТ"
+
+# Preview without writing anything
+python manage.py import_materials --source /path/to/folder --dry-run
+```
+
+The import is **idempotent** — folders/files are keyed by their path relative to
+the import root, so re-running never duplicates and preserves existing IDs.
+Downloads are **resilient**: the full file list is enumerated first, then each
+file is fetched individually with retries/backoff and resume, so one file that
+Google temporarily rate-limits never aborts the rest. Any files that still fail
+are reported and picked up on the next run.
+
+The `Тести` (tests) folder is **excluded by default** (`--exclude Тести`) — tests
+are managed as structured JSON, not imported as documents (see below). Each
+top-level folder becomes a filterable subject on the website, and selecting it
+shows every material nested beneath it (subtree filtering).
+
+## Importing tests (JSON)
+
+Tests are authored as JSON and loaded into the Test / Question / Choice models:
+
+```bash
+python manage.py import_tests path/to/tests.json      # one file
+python manage.py import_tests path/to/tests_dir/      # every *.json in a dir
+python manage.py import_tests tests.json --dry-run    # validate only
+```
+
+See [`sample_tests.json`](sample_tests.json) for the format (single/multiple/
+ordering questions supported). The importer validates each test, is idempotent
+(tests are keyed by title — re-importing updates in place and replaces the
+question set), and reports per-test errors without aborting the batch.
 
 ## Scoring & fairness rules (enforced server-side)
 

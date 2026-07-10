@@ -13,7 +13,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from mehmat_app.views.achievements import AchievementListView
 from mehmat_app.views.auth import TelegramAuthView
 from mehmat_app.views.leaderboard import LeaderboardView, MyRankView
-from mehmat_app.views.materials import MaterialViewSet
+from mehmat_app.views.materials import CategoryViewSet, MaterialViewSet
 from mehmat_app.views.notifications import NotificationViewSet
 from mehmat_app.views.submissions import SubmissionViewSet
 from mehmat_app.views.tests import TestViewSet
@@ -24,6 +24,7 @@ from mehmat_app.views.user import (
 )
 
 router = DefaultRouter()
+router.register("categories", CategoryViewSet, basename="category")
 router.register("materials", MaterialViewSet, basename="material")
 router.register("tests", TestViewSet, basename="test")
 router.register("submissions", SubmissionViewSet, basename="submission")

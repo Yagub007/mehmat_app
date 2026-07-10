@@ -5,13 +5,37 @@ from django.db import models
 
 
 class MaterialCategory(models.TextChoices):
-    """Categories for study materials."""
+    """Legacy fixed subject categories.
+
+    Retained for backward compatibility and as sensible defaults. Study
+    materials are now organised through the hierarchical :class:`Category`
+    model, which is populated automatically from the Google Drive folder tree.
+    """
 
     ALGEBRA = "algebra", "Algebra"
     GEOMETRY = "geometry", "Geometry"
     FUNCTIONS = "functions", "Functions"
     DERIVATIVES = "derivatives", "Derivatives"
     PROBABILITY = "probability", "Probability"
+    OTHER = "other", "Other"
+
+
+class FileType(models.TextChoices):
+    """High-level type of a study material's underlying file.
+
+    Derived from the source MIME type so the frontend can pick an appropriate
+    icon and "open" behaviour without parsing MIME strings itself.
+    """
+
+    PDF = "pdf", "PDF"
+    VIDEO = "video", "Video"
+    PRESENTATION = "presentation", "Presentation"
+    DOCUMENT = "document", "Document"
+    SPREADSHEET = "spreadsheet", "Spreadsheet"
+    IMAGE = "image", "Image"
+    AUDIO = "audio", "Audio"
+    ARCHIVE = "archive", "Archive"
+    LINK = "link", "Link"
     OTHER = "other", "Other"
 
 

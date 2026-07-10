@@ -1,0 +1,68 @@
+[
+  {
+    "title": "НМТ · Числа та дії — пробний тест",
+    "description": "Базовий тест на дії з числами, модуль і округлення.",
+    "difficulty": "easy",
+    "duration": 15,
+    "reward_points": 20,
+    "is_published": true,
+    "is_active": true,
+    "questions": [
+      {
+        "text": "Обчисліть: 12 − 3 × 4",
+        "type": "single",
+        "points": 1,
+        "explanation": "Спочатку множення: 3 × 4 = 12, потім 12 − 12 = 0.",
+        "choices": [
+          { "text": "0", "is_correct": true },
+          { "text": "36", "is_correct": false },
+          { "text": "24", "is_correct": false },
+          { "text": "-3", "is_correct": false }
+        ]
+      },
+      {
+        "text": "Які з чисел є цілими?",
+        "type": "multiple",
+        "points": 2,
+        "choices": [
+          { "text": "-5", "is_correct": true },
+          { "text": "0", "is_correct": true },
+          { "text": "2.5", "is_correct": false },
+          { "text": "7", "is_correct": true }
+        ]
+      },
+      {
+        "text": "Розташуйте числа за зростанням.",
+        "type": "ordering",
+        "points": 2,
+        "choices": [
+          { "text": "-3", "order": 0 },
+          { "text": "0", "order": 1 },
+          { "text": "1.5", "order": 2 },
+          { "text": "4", "order": 3 }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "НМТ · Пропорції",
+    "description": "Пряма та обернена пропорційності.",
+    "difficulty": "medium",
+    "duration": 20,
+    "reward_points": 30,
+    "is_published": true,
+    "is_active": true,
+    "questions": [
+      {
+        "text": "Якщо 3 зошити коштують 45 грн, скільки коштують 5 таких зошитів?",
+        "type": "single",
+        "points": 1,
+        "choices": [
+          { "text": "75 грн", "is_correct": true },
+          { "text": "60 грн", "is_correct": false },
+          { "text": "90 грн", "is_correct": false }
+        ]
+      }
+    ]
+  }
+]

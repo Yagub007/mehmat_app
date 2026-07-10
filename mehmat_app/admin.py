@@ -7,6 +7,7 @@ from django.http import HttpRequest
 
 from mehmat_app.models import (
     Achievement,
+    Category,
     Choice,
     Material,
     Notification,
@@ -95,20 +96,34 @@ class UserAdmin(admin.ModelAdmin):
 
 
 # ---------------------------------------------------------------------------
-# Materials
+# Categories & materials
 # ---------------------------------------------------------------------------
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("full_path", "slug", "parent", "ordering", "is_published")
+    list_filter = ("is_published",)
+    search_fields = ("name", "slug", "source_path")
+    list_editable = ("ordering", "is_published")
+    prepopulated_fields = {"slug": ("name",)}
+    autocomplete_fields = ("parent",)
+    ordering = ("ordering", "name")
+    actions = [make_published, make_unpublished]
+    readonly_fields = ("source_path", "created_at", "updated_at")
+
+
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
     list_display = (
-        "title", "category", "estimated_reading_time", "ordering",
+        "title", "category", "file_type", "estimated_reading_time", "ordering",
         "is_published", "created_at",
     )
-    list_filter = ("category", "is_published")
-    search_fields = ("title", "description")
+    list_filter = ("file_type", "subject", "is_published")
+    search_fields = ("title", "description", "source_path")
     list_editable = ("ordering", "is_published")
+    autocomplete_fields = ("category",)
     ordering = ("ordering", "-created_at")
     actions = [make_published, make_unpublished]
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("source_path", "created_at", "updated_at")
 
 
 # ---------------------------------------------------------------------------
