@@ -3,11 +3,17 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-from django.db.models import Avg, Count, Max, Q, Sum
+from decimal import Decimal
+
+from django.db.models import Avg, Count, DecimalField, Max, Q, Sum, Value
 from django.db.models.functions import Coalesce
 
 from mehmat_app.models import User
 from mehmat_app.selectors.leaderboard import rank_for_user
+
+# ``Submission.score`` is a DecimalField(max_digits=5, decimal_places=2); the
+# Coalesce fallback must be the same type or Django raises a mixed-type FieldError.
+_SCORE_FIELD = DecimalField(max_digits=5, decimal_places=2)
 
 
 class UserStatistics(TypedDict):
@@ -31,8 +37,16 @@ def user_statistics(user: User) -> UserStatistics:
     aggregates = user.submissions.aggregate(
         official_submissions=Count("id", filter=Q(is_official=True)),
         practice_submissions=Count("id", filter=Q(is_official=False)),
-        average_score=Coalesce(Avg("score", filter=Q(is_official=True)), 0.0),
-        best_score=Coalesce(Max("score", filter=Q(is_official=True)), 0.0),
+        average_score=Coalesce(
+            Avg("score", filter=Q(is_official=True)),
+            Value(Decimal("0"), output_field=_SCORE_FIELD),
+            output_field=_SCORE_FIELD,
+        ),
+        best_score=Coalesce(
+            Max("score", filter=Q(is_official=True)),
+            Value(Decimal("0"), output_field=_SCORE_FIELD),
+            output_field=_SCORE_FIELD,
+        ),
         total_time_spent=Coalesce(
             Sum("completion_time", filter=Q(is_official=True)), 0
         ),
